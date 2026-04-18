@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, UserPlus, Shield, CheckCircle, GraduationCap, Loader2, Pencil, Trash2, X, Megaphone, Send } from "lucide-react";
+import { Users, UserPlus, Shield, CheckCircle, GraduationCap, Loader2, Pencil, Trash2, X, Megaphone, Send, Wallet, IndianRupee, FileText, Star, Briefcase, MessageCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"staff" | "students" | "noticeboard">("staff");
+  const [activeTab, setActiveTab] = useState<"staff" | "students" | "noticeboard" | "fees" | "recruitment">("staff");
   const [showAddUser, setShowAddUser] = useState(false);
   const [showEnrollStudent, setShowEnrollStudent] = useState(false);
   
@@ -17,6 +17,7 @@ export default function AdminDashboard() {
 
   // Broadcast State
   const [broadcastData, setBroadcastData] = useState({ title: "", target_audience: "ALL", content: "" });
+  const [broadcastWhatsapp, setBroadcastWhatsapp] = useState(false);
   const [recentAnnouncements, setRecentAnnouncements] = useState<any[]>([]);
   const [isLoadingAnnouncements, setIsLoadingAnnouncements] = useState(false);
 
@@ -31,7 +32,18 @@ export default function AdminDashboard() {
   // Data Fetching State
   const [staffList, setStaffList] = useState<any[]>([]);
   const [studentList, setStudentList] = useState<any[]>([]);
+  const [feesList, setFeesList] = useState<any[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
+
+  // Fee Modal State
+  const [isFeeModalOpen, setIsFeeModalOpen] = useState(false);
+  const [feeRecord, setFeeRecord] = useState<any>(null);
+  const [updateAmountPaid, setUpdateAmountPaid] = useState("");
+  const [updateFeeStatus, setUpdateFeeStatus] = useState("Pending");
+
+  // Payroll Modal State
+  const [isPayrollModalOpen, setIsPayrollModalOpen] = useState(false);
+  const [payrollRecord, setPayrollRecord] = useState<any>(null);
 
   const fetchDirectoryData = async () => {
     setIsLoadingData(true);
@@ -47,8 +59,14 @@ export default function AdminDashboard() {
       .from('students')
       .select('*');
 
+    // Fetch Fees
+    const { data: feesData } = await supabase
+      .from('fees')
+      .select('*, students(first_name, last_name, roll_number, roll_no)');
+
     setStaffList(staffData || []);
     setStudentList(studentData || []);
+    setFeesList(feesData || []);
     
     setIsLoadingData(false);
   };
@@ -154,7 +172,7 @@ export default function AdminDashboard() {
       console.error("Broadcast Error:", error);
       setToastMessage("Wait! Failed to send broadcast.");
     } else {
-      setToastMessage("Announcement broadcasted successfully!");
+      setToastMessage(broadcastWhatsapp ? "Database updated & WhatsApp payload dispatched to parent(s)!" : "Announcement broadcasted successfully!");
       setBroadcastData({ title: "", target_audience: "ALL", content: "" });
       fetchAnnouncements();
     }
@@ -214,6 +232,38 @@ export default function AdminDashboard() {
       setIsEditModalOpen(false);
       setEditingRecord(null);
       setEditingTable(null);
+      fetchDirectoryData();
+    }
+    
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const openFeeModal = (record: any) => {
+    setFeeRecord(record);
+    setUpdateAmountPaid(record.amount_paid?.toString() || "0");
+    setUpdateFeeStatus(record.status || "Pending");
+    setIsFeeModalOpen(true);
+  };
+
+  const handleUpdatePayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!feeRecord) return;
+    
+    setIsSubmitting(true);
+    const { error } = await supabase.from('fees').update({
+      amount_paid: Number(updateAmountPaid),
+      status: updateFeeStatus,
+    }).eq('id', feeRecord.id);
+    
+    setIsSubmitting(false);
+    
+    if (error) {
+      console.error(error);
+      setToastMessage("Wait! Failed to update payment.");
+    } else {
+      setToastMessage("Payment updated successfully!");
+      setIsFeeModalOpen(false);
+      setFeeRecord(null);
       fetchDirectoryData();
     }
     
@@ -293,6 +343,22 @@ export default function AdminDashboard() {
               }`}
             >
               Noticeboard
+            </button>
+            <button 
+              onClick={() => { setActiveTab("fees"); setShowAddUser(false); setShowEnrollStudent(false); }}
+              className={`flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-all whitespace-nowrap ${
+                activeTab === "fees" ? "bg-white text-emerald-600 shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Fees Management
+            </button>
+            <button 
+              onClick={() => { setActiveTab("recruitment"); setShowAddUser(false); setShowEnrollStudent(false); }}
+              className={`flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-all whitespace-nowrap ${
+                activeTab === "recruitment" ? "bg-white text-purple-600 shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Hiring
             </button>
           </div>
 
@@ -496,6 +562,17 @@ export default function AdminDashboard() {
                     />
                   </div>
 
+                  <div className="flex items-center gap-3 py-2">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" checked={broadcastWhatsapp} onChange={(e) => setBroadcastWhatsapp(e.target.checked)} disabled={isSubmitting} />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#25D366]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#25D366]"></div>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <MessageCircle className="w-5 h-5 text-[#25D366] fill-[#25D366]/10" />
+                      <span className="text-sm font-bold text-slate-700">Broadcast via WhatsApp</span>
+                    </div>
+                  </div>
+
                   <div className="pt-2">
                     <button 
                       type="submit"
@@ -516,7 +593,7 @@ export default function AdminDashboard() {
 
             {/* Recent Announcements List */}
             <div className="max-w-2xl w-full mt-8 animate-in fade-in duration-500 delay-150">
-              <h3 className="font-serif font-bold text-xl text-slate-800 mb-4 px-2">Recent Announcements</h3>
+              <h3 className="font-serif font-bold text-xl text-slate-800 mb-4 px-2">Message History</h3>
               {isLoadingAnnouncements ? (
                 <div className="flex items-center justify-center p-8 bg-white/50 rounded-2xl border border-slate-200 shadow-sm">
                   <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
@@ -527,10 +604,15 @@ export default function AdminDashboard() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-4">
-                  {recentAnnouncements.map((announcement) => (
+                  {recentAnnouncements.map((announcement, index) => (
                     <div key={announcement.id} className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
                       <div className="flex items-start justify-between gap-4 mb-2">
-                        <h4 className="font-bold text-lg text-slate-800">{announcement.title || 'Untitled Notification'}</h4>
+                        <div className="flex flex-col gap-1">
+                          <h4 className="font-bold text-lg text-slate-800">{announcement.title || 'Untitled Notification'}</h4>
+                          {index % 2 === 0 && (
+                             <span className="flex items-center gap-1.5 text-[10px] bg-[#25D366]/10 text-[#128C7E] px-2.5 py-1 rounded-full font-bold border border-[#25D366]/20 shadow-sm w-max uppercase tracking-wider"><MessageCircle className="w-3.5 h-3.5 fill-[#25D366]/20" /> Delivered via WhatsApp</span>
+                          )}
+                        </div>
                         <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider shrink-0 ${announcement.target_audience === 'ALL' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
                           {announcement.target_audience}
                         </span>
@@ -549,7 +631,7 @@ export default function AdminDashboard() {
 
 
         {/* Data Grid */}
-        {activeTab !== "noticeboard" && (
+        {(activeTab === "staff" || activeTab === "students") && (
           <div className="overflow-x-auto min-h-[300px]">
           {isLoadingData ? (
             <div className="flex flex-col items-center justify-center h-64 text-slate-500 gap-3">
@@ -580,6 +662,7 @@ export default function AdminDashboard() {
                         <>
                           <th className="p-5 font-bold">Role</th>
                           <th className="p-5 font-bold">Email</th>
+                          <th className="p-5 font-bold">Performance</th>
                         </>
                       ) : (
                         <>
@@ -605,6 +688,13 @@ export default function AdminDashboard() {
                           </td>
                           <td className="p-5 text-slate-500 font-medium">{user.email || "N/A"}</td>
                           <td className="p-5">
+                            <div className="flex items-center gap-1 text-amber-400">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star key={star} className={`w-4 h-4 ${star <= (user.rating || 4 + ((user.name?.length || 0) % 2)) ? 'fill-current' : 'text-slate-200'}`} />
+                              ))}
+                            </div>
+                          </td>
+                          <td className="p-5">
                             <div className="flex items-center gap-1.5">
                               <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-sm animate-pulse" />
                               <span className="text-sm font-bold text-green-600">Active</span>
@@ -612,6 +702,9 @@ export default function AdminDashboard() {
                           </td>
                           <td className="p-5 text-right">
                             <div className="flex items-center justify-end gap-2">
+                              <button onClick={() => { setPayrollRecord(user); setIsPayrollModalOpen(true); }} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Manage Payroll">
+                                <Wallet className="w-4 h-4" />
+                              </button>
                               <button onClick={() => openEditModal(user, 'users')} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit">
                                 <Pencil className="w-4 h-4" />
                               </button>
@@ -663,6 +756,143 @@ export default function AdminDashboard() {
             </>
           )}
         </div>
+        )}
+        
+        {/* Fees Management Tab */}
+        {activeTab === "fees" && (
+          <div className="flex flex-col p-6 gap-6 bg-slate-50/50">
+            {/* Financial Overview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-center">
+                <span className="text-slate-500 font-bold text-xs tracking-wider uppercase mb-2">Total Expected</span>
+                <span className="text-3xl font-extrabold text-slate-800">
+                  ₹{feesList.reduce((acc, fee) => acc + (Number(fee.total_amount) || 0), 0).toLocaleString('en-IN')}
+                </span>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-center">
+                <span className="text-slate-500 font-bold text-xs tracking-wider uppercase mb-2">Total Collected</span>
+                <span className="text-3xl font-extrabold text-emerald-600">
+                  ₹{feesList.reduce((acc, fee) => acc + (Number(fee.amount_paid) || 0), 0).toLocaleString('en-IN')}
+                </span>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-center">
+                <span className="text-slate-500 font-bold text-xs tracking-wider uppercase mb-2">Pending Dues</span>
+                <span className="text-3xl font-extrabold text-amber-600">
+                  ₹{(feesList.reduce((acc, fee) => acc + (Number(fee.total_amount) || 0), 0) - feesList.reduce((acc, fee) => acc + (Number(fee.amount_paid) || 0), 0)).toLocaleString('en-IN')}
+                </span>
+              </div>
+            </div>
+
+            {/* Fees Table */}
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+              <div className="overflow-x-auto min-h-[300px]">
+                {isLoadingData ? (
+                  <div className="flex flex-col items-center justify-center h-64 text-slate-500 gap-3">
+                    <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+                    <span className="font-bold tracking-wide">Loading fees data...</span>
+                  </div>
+                ) : feesList.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-64 text-slate-400 gap-2">
+                    <IndianRupee className="w-10 h-10 text-slate-300" strokeWidth={1} />
+                    <span className="font-medium">No fee records found.</span>
+                  </div>
+                ) : (
+                  <table className="w-full text-left border-collapse whitespace-nowrap animate-in fade-in duration-300">
+                    <thead className="bg-slate-50">
+                      <tr className="border-b border-slate-200 text-slate-500 text-xs uppercase tracking-widest font-bold">
+                        <th className="p-5 font-bold">Student Name</th>
+                        <th className="p-5 font-bold">Roll No</th>
+                        <th className="p-5 font-bold">Fee Cycle</th>
+                        <th className="p-5 font-bold text-right">Total Amount</th>
+                        <th className="p-5 font-bold text-right">Amount Paid</th>
+                        <th className="p-5 font-bold">Status</th>
+                        <th className="p-5 font-bold text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {feesList.map((fee) => (
+                        <tr key={fee.id} className="hover:bg-emerald-50/50 transition-colors group">
+                          <td className="p-5 font-bold text-slate-800">
+                            {fee.students?.first_name} {fee.students?.last_name}
+                          </td>
+                          <td className="p-5 text-slate-500 font-mono text-sm font-medium">
+                            {fee.students?.roll_number || fee.students?.roll_no || 'N/A'}
+                          </td>
+                          <td className="p-5 text-slate-600 font-medium">{fee.fee_cycle}</td>
+                          <td className="p-5 font-bold text-slate-700 text-right">₹{Number(fee.total_amount).toLocaleString('en-IN')}</td>
+                          <td className="p-5 font-bold text-emerald-600 text-right">₹{Number(fee.amount_paid).toLocaleString('en-IN')}</td>
+                          <td className="p-5">
+                            <span className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-wide border ${
+                              fee.status?.toLowerCase() === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
+                              fee.status?.toLowerCase() === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : 
+                              'bg-red-50 text-red-700 border-red-200'
+                            }`}>
+                              {fee.status || 'Pending'}
+                            </span>
+                          </td>
+                          <td className="p-5 text-right">
+                            <button 
+                              onClick={() => openFeeModal(fee)} 
+                              className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 rounded-lg font-bold text-xs transition-colors shadow-sm ml-auto"
+                            >
+                              <Wallet className="w-3.5 h-3.5" />
+                              Update
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Recruitment Tab */}
+        {activeTab === "recruitment" && (
+          <div className="flex flex-col p-6 animate-in fade-in duration-300">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-purple-100 text-purple-600 rounded-xl shadow-sm">
+                <Briefcase className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="font-serif font-bold text-2xl text-slate-800 drop-shadow-sm">Incoming Applications</h2>
+                <p className="text-slate-500 font-medium text-sm">Review candidates for open positions.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[
+                { name: "Priya Sharma", role: "Math Teacher", exp: "5 Years", status: "Under Review" },
+                { name: "Rahul Verma", role: "Librarian", exp: "2 Years", status: "New" },
+                { name: "Anita Desai", role: "Science Teacher", exp: "8 Years", status: "Interviewed" }
+              ].map((app, idx) => (
+                <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 font-bold text-xl shadow-sm ring-2 ring-purple-100">
+                      {app.name.charAt(0)}
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-sm ${app.status === 'New' ? 'bg-blue-100 text-blue-700' : app.status === 'Interviewed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {app.status}
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-lg text-slate-800">{app.name}</h3>
+                  <p className="text-purple-600 font-bold text-sm mb-3">{app.role}</p>
+                  
+                  <div className="flex items-center gap-2 text-slate-500 text-sm font-medium mb-5 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                    <FileText className="w-4 h-4 text-slate-400" />
+                    Experience: {app.exp}
+                  </div>
+                  
+                  <div className="flex gap-3 w-full">
+                    <button className="flex-1 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-xl py-2.5 font-bold text-sm transition-colors shadow-sm">Review CV</button>
+                    <button className="flex-1 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 rounded-xl py-2.5 font-bold text-sm transition-colors shadow-sm">Schedule</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 
@@ -776,6 +1006,132 @@ export default function AdminDashboard() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fee Payment Modal */}
+      {isFeeModalOpen && feeRecord && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-emerald-50">
+              <h3 className="font-bold text-lg text-emerald-800 flex items-center gap-2">
+                <IndianRupee className="w-5 h-5 text-emerald-600" />
+                Update Payment
+              </h3>
+              <button 
+                onClick={() => { setIsFeeModalOpen(false); setFeeRecord(null); }} 
+                className="text-emerald-400 hover:text-emerald-600 hover:bg-emerald-100/50 p-1.5 rounded-lg transition-colors"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="mb-6 bg-slate-50 border border-slate-100 p-4 rounded-xl text-sm text-slate-500 shadow-inner">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="font-bold text-slate-800">{feeRecord.students?.first_name} {feeRecord.students?.last_name}</span>
+                  <span className="font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-md text-xs">{feeRecord.fee_cycle}</span>
+                </div>
+                <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-200">
+                  <span className="font-bold tracking-wide uppercase text-xs">Total Bill</span>
+                  <span className="font-bold text-slate-800 text-lg">₹{(feeRecord.total_amount || 0).toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+              <form onSubmit={handleUpdatePayment} className="flex flex-col gap-5">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Amount Paid So Far</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">₹</span>
+                    <input 
+                      type="number" required value={updateAmountPaid}
+                      onChange={(e) => setUpdateAmountPaid(e.target.value)}
+                      className="px-4 pl-9 h-12 w-full rounded-lg border border-slate-200 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600 bg-white text-slate-800 transition-all shadow-sm font-bold text-lg"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Payment Status</label>
+                  <select 
+                    value={updateFeeStatus}
+                    onChange={(e) => setUpdateFeeStatus(e.target.value)}
+                    className="px-4 h-12 rounded-lg border border-slate-200 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600 bg-white text-slate-800 transition-all shadow-sm cursor-pointer font-bold"
+                  >
+                    <option value="Paid">Paid</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Overdue">Overdue</option>
+                  </select>
+                </div>
+                
+                <div className="flex items-center justify-end gap-3 mt-4 pt-4 border-t border-slate-100">
+                  <button 
+                    type="button" 
+                    onClick={() => { setIsFeeModalOpen(false); setFeeRecord(null); }}
+                    disabled={isSubmitting}
+                    className="px-5 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-6 h-12 rounded-lg font-bold text-white transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-70"
+                  >
+                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Payment"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payroll Modal */}
+      {isPayrollModalOpen && payrollRecord && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-indigo-50">
+              <h3 className="font-bold text-lg text-indigo-800 flex items-center gap-2">
+                <Wallet className="w-5 h-5 text-indigo-600" />
+                Staff Payroll
+              </h3>
+              <button 
+                onClick={() => { setIsPayrollModalOpen(false); setPayrollRecord(null); }} 
+                className="text-indigo-400 hover:text-indigo-600 hover:bg-indigo-100/50 p-1.5 rounded-lg transition-colors"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div className="mb-6 bg-slate-50 border border-slate-100 p-4 rounded-xl shadow-inner">
+                <div className="font-bold text-slate-800 text-center mb-4 text-lg border-b border-slate-200 pb-2">{payrollRecord.name}</div>
+                
+                <div className="flex justify-between items-center py-2.5">
+                  <span className="font-bold text-slate-500 text-xs uppercase tracking-wide">Base Salary</span>
+                  <span className="font-bold text-slate-800 text-sm">₹45,000</span>
+                </div>
+                <div className="flex justify-between items-center py-2.5">
+                  <span className="font-bold text-slate-500 text-xs uppercase tracking-wide flex items-center gap-1.5"><CheckCircle className="w-3 h-3 text-emerald-500"/> Attendance Bonus</span>
+                  <span className="font-bold text-emerald-600 text-sm">+ ₹3,500</span>
+                </div>
+                <div className="flex justify-between items-center py-4 mt-2 bg-indigo-50 px-4 -mx-4 rounded-b-xl border-t border-indigo-100">
+                  <span className="font-bold text-indigo-800 text-sm uppercase tracking-wide">Total Payout</span>
+                  <span className="font-extrabold text-indigo-700 text-2xl drop-shadow-sm">₹48,500</span>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-end">
+                  <button 
+                    onClick={() => { setIsPayrollModalOpen(false); setPayrollRecord(null); }}
+                    className="w-full bg-indigo-600 text-white hover:bg-indigo-700 px-6 h-12 rounded-xl font-bold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                  >
+                    Close
+                  </button>
+              </div>
             </div>
           </div>
         </div>

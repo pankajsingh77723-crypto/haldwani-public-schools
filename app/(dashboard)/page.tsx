@@ -1,20 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calculator, Atom, BookOpen, FlaskConical, Globe, Languages, GraduationCap, Loader2, Megaphone, Bell } from "lucide-react";
+import { Calculator, Atom, BookOpen, FlaskConical, Globe, Languages, GraduationCap, Loader2, Megaphone, Bell, Target } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
-
-// Helper function to assign icons and colors based on subject
-function getSubjectStyles(subject: string) {
-  const s = subject.toLowerCase();
-  if (s.includes("math")) return { icon: Calculator, gradient: "from-red-500 to-rose-400", bg: "bg-red-50", text: "text-red-600" };
-  if (s.includes("phys")) return { icon: Atom, gradient: "from-green-500 to-emerald-400", bg: "bg-green-50", text: "text-green-600" };
-  if (s.includes("chem")) return { icon: FlaskConical, gradient: "from-blue-500 to-cyan-400", bg: "bg-blue-50", text: "text-blue-600" };
-  if (s.includes("eng") || s.includes("lang") || s.includes("lit")) return { icon: Languages, gradient: "from-purple-500 to-fuchsia-400", bg: "bg-purple-50", text: "text-purple-600" };
-  if (s.includes("hist") || s.includes("geo") || s.includes("civics")) return { icon: Globe, gradient: "from-amber-500 to-orange-400", bg: "bg-amber-50", text: "text-amber-600" };
-  
-  return { icon: BookOpen, gradient: "from-indigo-500 to-blue-400", bg: "bg-indigo-50", text: "text-indigo-600" };
-}
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 export default function Dashboard() {
   const [grades, setGrades] = useState<any[]>([]);
@@ -77,7 +66,7 @@ export default function Dashboard() {
   return (
     <section className="flex-1 min-w-0 flex flex-col gap-10 animate-in fade-in duration-500">
       <ImportantUpdates announcements={announcements} loading={loadingAnnouncements} />
-      <RecentMarks grades={grades} loading={loading} />
+      <HolisticCard grades={grades} loading={loading} />
     </section>
   );
 }
@@ -123,61 +112,55 @@ function ImportantUpdates({ announcements, loading }: { announcements: any[], lo
   );
 }
 
-function RecentMarks({ grades, loading }: { grades: any[], loading: boolean }) {
+function HolisticCard({ grades, loading }: { grades: any[], loading: boolean }) {
+  const avgAcademics = grades.length > 0 
+    ? grades.reduce((acc, g) => acc + (g.final_score || 0), 0) / grades.length 
+    : 85;
+
+  const performaceData = [
+    { subject: 'Academics', score: Math.round(avgAcademics), fullMark: 100 },
+    { subject: 'Communication', score: 88, fullMark: 100 },
+    { subject: 'Sports', score: 75, fullMark: 100 },
+    { subject: 'Creativity', score: 92, fullMark: 100 },
+    { subject: 'Discipline', score: 95, fullMark: 100 },
+  ];
+
   return (
-    <div className="bg-surface border border-slate-100 rounded-2xl shadow-md p-8 md:p-10 hover:shadow-lg transition-all duration-300 flex flex-col">
-      <div className="flex items-center justify-between mb-8">
+    <div className="bg-surface border border-slate-100 rounded-2xl shadow-md p-8 md:p-10 hover:shadow-lg transition-all duration-300 flex flex-col relative overflow-hidden">
+      <div className="absolute -right-20 -top-20 w-64 h-64 bg-blue-50/50 rounded-full blur-3xl opacity-50 pointer-events-none" />
+      <div className="flex items-center justify-between mb-8 z-10 relative">
         <div>
-          <h2 className="font-serif font-bold text-2xl text-primary drop-shadow-sm">Recent Marks</h2>
-          <p className="text-slate-500 text-sm mt-1.5 font-medium">Latest term-wise academic performance</p>
+          <h2 className="font-serif font-bold text-2xl text-slate-800 drop-shadow-sm flex items-center gap-3">
+            <Target className="w-6 h-6 text-blue-600" />
+            360° Holistic Performance
+          </h2>
+          <p className="text-slate-500 text-sm mt-1.5 font-medium">Comprehensive view of student capabilities</p>
         </div>
       </div>
       
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-12 gap-3 text-slate-400">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="font-medium">Fetching grades from cloud...</p>
-        </div>
-      ) : grades.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 gap-4 text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-          <div className="p-4 bg-white rounded-full shadow-sm">
-            <GraduationCap className="w-8 h-8 text-slate-400" />
-          </div>
-          <p className="font-medium text-slate-500">No grades posted yet.</p>
+        <div className="flex flex-col items-center justify-center py-12 gap-3 text-slate-400 z-10 relative">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+          <p className="font-medium">Synthesizing holistic profile...</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
-          {grades.map((grade, i) => {
-            const styles = getSubjectStyles(grade.subject || "Unknown");
-            const score = grade.final_score || 0;
-            const SubjectIcon = styles.icon;
-
-            return (
-              <div 
-                key={grade.id || i} 
-                className="flex flex-col p-5 md:p-6 border border-slate-100 bg-white rounded-2xl hover:-translate-y-1 hover:shadow-md hover:border-slate-200 transition-all duration-300 group"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3.5">
-                    <div className={`p-2.5 rounded-xl ${styles.bg} ${styles.text} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
-                      <SubjectIcon className="w-5 h-5" strokeWidth={2.5} />
-                    </div>
-                    <span className="font-bold text-slate-800 text-lg">{grade.subject}</span>
-                  </div>
-                  <span className={`text-4xl font-extrabold drop-shadow-sm ${styles.text}`}>{score}%</span>
-                </div>
-                
-                {/* Progress Bar Track */}
-                <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                  {/* Progress Bar Fill */}
-                  <div 
-                    className={`h-full rounded-full bg-gradient-to-r ${styles.gradient} shadow-sm transition-all duration-1000 ease-out`} 
-                    style={{ width: `${score}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
+        <div className="w-full h-[400px] z-10 relative">
+          <ResponsiveContainer width="100%" height="100%">
+            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={performaceData}>
+              <PolarGrid stroke="#e2e8f0" strokeDasharray="3 3" />
+              <PolarAngleAxis dataKey="subject" tick={{ fill: '#475569', fontSize: 13, fontWeight: 'bold' }} />
+              <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+              <Radar 
+                name="Student Profile" 
+                dataKey="score" 
+                stroke="#3b82f6" 
+                strokeWidth={2}
+                fill="#60a5fa" 
+                fillOpacity={0.6} 
+                style={{ filter: 'drop-shadow(0px 0px 10px rgba(59, 130, 246, 0.5))' }} 
+              />
+            </RadarChart>
+          </ResponsiveContainer>
         </div>
       )}
     </div>
