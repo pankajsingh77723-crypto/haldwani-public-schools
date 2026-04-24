@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Users, UserPlus, Shield, CheckCircle, GraduationCap, Loader2, Pencil, Trash2, X, Megaphone, Send, Wallet, IndianRupee, FileText, Star, Briefcase, MessageCircle, Activity, UploadCloud } from "lucide-react";
+import { Users, UserPlus, Shield, CheckCircle, GraduationCap, Loader2, Pencil, Trash2, X, Megaphone, Send, Wallet, IndianRupee, FileText, Star, Briefcase, MessageCircle, Activity, CloudUpload } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import Papa from 'papaparse';
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
@@ -528,10 +528,10 @@ export default function AdminDashboard() {
                 <button 
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  className="flex items-center gap-2 bg-transparent text-slate-600 border border-slate-300 hover:bg-slate-50 px-5 py-2.5 rounded-xl font-bold transition-all w-full md:w-auto justify-center disabled:opacity-50 hover:shadow-sm"
+                  className="flex items-center gap-2 bg-white text-blue-600 border-2 border-blue-600 hover:bg-blue-50 px-5 py-2.5 rounded-xl font-bold transition-all w-full md:w-auto justify-center disabled:opacity-50 shadow-sm hover:shadow-md"
                   title="Upload CSV"
                 >
-                  {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-slate-400" /> : <UploadCloud className="w-5 h-5" strokeWidth={2.5} />}
+                  {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-blue-600" /> : <CloudUpload className="w-5 h-5" strokeWidth={2.5} />}
                   Upload CSV
                 </button>
                 <button 
