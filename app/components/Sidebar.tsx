@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, BookOpen, MessageSquare, UserCircle, AlertCircle, ChevronRight, LogOut, Shield } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -68,61 +67,11 @@ export function Sidebar() {
           </button>
         </div>
       </nav>
-      {isParent && <ProfileCard />}
       <AlertsCard />
     </aside>
   );
 }
 
-function ProfileCard() {
-  const [studentProfile, setStudentProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchStudent() {
-      const { data, error } = await supabase.from("students").select("*").limit(1).single();
-      if (!error && data) {
-        setStudentProfile(data);
-      }
-      setLoading(false);
-    }
-    fetchStudent();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="bg-surface border border-slate-100 rounded-2xl p-8 flex flex-col items-center shadow-md animate-pulse">
-        <div className="w-28 h-28 rounded-full bg-slate-100 mb-5 ring-4 ring-slate-50" />
-        <div className="h-6 w-32 bg-slate-100 rounded-lg mb-4" />
-        <div className="flex flex-col items-center space-y-3 w-full mt-2">
-          <div className="h-7 w-24 bg-blue-50 rounded-full" />
-          <div className="h-4 w-20 bg-slate-100 rounded" />
-        </div>
-      </div>
-    );
-  }
-
-  const name = studentProfile ? `${studentProfile.first_name} ${studentProfile.last_name}` : "Student Profile";
-  const className = studentProfile?.class_name ? `CLASS ${studentProfile.class_name}` : "CLASS N/A";
-  const rollNo = studentProfile ? `Roll No: ${studentProfile.roll_number || studentProfile.roll || 'N/A'}` : "Roll No: N/A";
-
-  return (
-    <div className="bg-surface border border-slate-100 rounded-2xl p-8 flex flex-col items-center shadow-md hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
-      <div className="w-28 h-28 rounded-full bg-slate-50 mb-5 shadow-inner overflow-hidden flex items-center justify-center ring-4 ring-slate-50">
-        <img 
-          src={`https://api.dicebear.com/7.x/notionists/svg?seed=${name.replace(/\s+/g, "")}&backgroundColor=f8fafc`} 
-          alt={name}
-          className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-        />
-      </div>
-      <h2 className="font-serif font-bold text-2xl text-slate-800 mb-1.5">{name}</h2>
-      <div className="flex flex-col items-center text-slate-500 text-sm space-y-2 w-full mt-2">
-        <span className="px-4 py-1.5 bg-blue-50 text-blue-700 rounded-full font-bold tracking-wide text-xs">{className.toUpperCase()}</span>
-        <span className="font-medium text-slate-500">{rollNo}</span>
-      </div>
-    </div>
-  );
-}
 
 function AlertsCard() {
   return (

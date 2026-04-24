@@ -1,13 +1,85 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Users, UserPlus, Shield, CheckCircle, GraduationCap, Loader2, Pencil, Trash2, X, Megaphone, Send, Wallet, IndianRupee, FileText, Star, Briefcase, MessageCircle } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Users, UserPlus, Shield, CheckCircle, GraduationCap, Loader2, Pencil, Trash2, X, Megaphone, Send, Wallet, IndianRupee, FileText, Star, Briefcase, MessageCircle, Activity } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
+import InvoiceModal from "./InvoiceModal";
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"staff" | "students" | "noticeboard" | "fees" | "recruitment">("staff");
+  const [activeTab, setActiveTab] = useState<"analytics" | "staff" | "students" | "noticeboard" | "fees" | "recruitment">("analytics");
+  const [activeCohort, setActiveCohort] = useState("All");
   const [showAddUser, setShowAddUser] = useState(false);
   const [showEnrollStudent, setShowEnrollStudent] = useState(false);
+  
+  // --- DUMMY DATA FOR ANALYTICS (POWER BI EFFECT) ---
+  const dummyStudents = useMemo(() => [
+    { id: 1, class: "Class 9" }, { id: 2, class: "Class 9" }, { id: 3, class: "Class 9" },
+    { id: 4, class: "Class 10" }, { id: 5, class: "Class 10" }, { id: 6, class: "Class 10" }, { id: 7, class: "Class 10" },
+    { id: 8, class: "Class 11" }, { id: 9, class: "Class 11" }
+  ], []);
+
+  const dummyGrades = useMemo(() => [
+    { class: "Class 9", subject: "Math", average: 75 },
+    { class: "Class 9", subject: "Science", average: 82 },
+    { class: "Class 9", subject: "English", average: 78 },
+    { class: "Class 10", subject: "Math", average: 88 },
+    { class: "Class 10", subject: "Science", average: 85 },
+    { class: "Class 10", subject: "English", average: 90 },
+    { class: "Class 11", subject: "Math", average: 80 },
+    { class: "Class 11", subject: "Science", average: 75 },
+    { class: "Class 11", subject: "English", average: 85 },
+  ], []);
+
+  const dummyAttendance = useMemo(() => [
+    { month: "Jan", "Class 9": 95, "Class 10": 98, "Class 11": 92 },
+    { month: "Feb", "Class 9": 92, "Class 10": 97, "Class 11": 90 },
+    { month: "Mar", "Class 9": 96, "Class 10": 99, "Class 11": 94 },
+    { month: "Apr", "Class 9": 94, "Class 10": 96, "Class 11": 91 },
+  ], []);
+
+  // --- FILTERED DATA ---
+  const filteredGrades = useMemo(() => {
+    return activeCohort === "All" ? [
+      { subject: "Math", average: 81 },
+      { subject: "Science", average: 80.6 },
+      { subject: "English", average: 84.3 },
+    ] : dummyGrades.filter(g => g.class === activeCohort);
+  }, [activeCohort, dummyGrades]);
+
+  const filteredAttendance = useMemo(() => {
+    if (activeCohort === "All") {
+      return dummyAttendance.map(d => ({
+        month: d.month,
+        attendance: Math.round((d["Class 9"] + d["Class 10"] + d["Class 11"]) / 3)
+      }));
+    }
+    return dummyAttendance.map(d => ({
+      month: d.month,
+      attendance: d[activeCohort as keyof typeof d]
+    }));
+  }, [activeCohort, dummyAttendance]);
+
+  const filteredStats = useMemo(() => {
+    let totalEnrolled = dummyStudents.length;
+    let avgAttendance = 94; // Global avg
+    let overallPerformance = 82; // Global avg
+
+    if (activeCohort !== "All") {
+      totalEnrolled = dummyStudents.filter(s => s.class === activeCohort).length;
+      avgAttendance = activeCohort === "Class 10" ? 97 : activeCohort === "Class 9" ? 94 : 91;
+      overallPerformance = activeCohort === "Class 10" ? 87 : activeCohort === "Class 9" ? 78 : 80;
+    }
+
+    return { totalEnrolled, avgAttendance, overallPerformance };
+  }, [activeCohort, dummyStudents]);
+
+  const COLORS = ['#2563EB', '#4F46E5', '#7C3AED']; 
+  const cohortData = [
+    { name: 'Class 9', value: 3 },
+    { name: 'Class 10', value: 4 },
+    { name: 'Class 11', value: 2 },
+  ];
   
   // Form and Toast State for Staff
   const [formData, setFormData] = useState({ name: "", email: "", role: "Teacher" });
@@ -40,6 +112,7 @@ export default function AdminDashboard() {
   const [feeRecord, setFeeRecord] = useState<any>(null);
   const [updateAmountPaid, setUpdateAmountPaid] = useState("");
   const [updateFeeStatus, setUpdateFeeStatus] = useState("Pending");
+  const [isAddInvoiceModalOpen, setIsAddInvoiceModalOpen] = useState(false);
 
   // Payroll Modal State
   const [isPayrollModalOpen, setIsPayrollModalOpen] = useState(false);
@@ -270,6 +343,8 @@ export default function AdminDashboard() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+
+
   const stats = [
     { label: "Total Enrolled", value: studentList.length.toString(), icon: Users, color: "text-blue-600", bg: "bg-blue-50", shadow: "shadow-md" },
     { label: "Active Staff", value: staffList.length.toString(), icon: Shield, color: "text-indigo-600", bg: "bg-indigo-50", shadow: "shadow-md" },
@@ -320,6 +395,14 @@ export default function AdminDashboard() {
           
           {/* Tabs */}
           <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200 self-stretch md:self-auto overflow-x-auto">
+            <button 
+              onClick={() => { setActiveTab("analytics"); setShowAddUser(false); setShowEnrollStudent(false); }}
+              className={`flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-all whitespace-nowrap ${
+                activeTab === "analytics" ? "bg-white text-blue-600 shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Power BI
+            </button>
             <button 
               onClick={() => { setActiveTab("staff"); setShowEnrollStudent(false); }}
               className={`flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-all whitespace-nowrap ${
@@ -384,6 +467,112 @@ export default function AdminDashboard() {
             )}
           </div>
         </div>
+
+        {/* Analytics Tab (Power BI Style) */}
+        {activeTab === "analytics" && (
+          <div className="flex flex-col p-6 md:p-8 gap-8 bg-slate-50/50 animate-in fade-in duration-500">
+            {/* Header & Clear Filter */}
+            <div className="flex items-center justify-between">
+               <div>
+                 <h2 className="font-serif font-bold text-2xl text-slate-800 flex items-center gap-3">
+                   <Activity className="w-6 h-6 text-blue-600" />
+                   Interactive Analytics
+                 </h2>
+                 <p className="text-slate-500 text-sm mt-1 font-medium">Click on chart segments to filter all visuals (Power BI style).</p>
+               </div>
+               {activeCohort !== "All" && (
+                 <button 
+                   onClick={() => setActiveCohort("All")}
+                   className="px-4 py-2 bg-white border border-slate-200 text-slate-600 font-bold rounded-lg hover:bg-slate-50 hover:text-slate-800 shadow-sm transition-all text-sm flex items-center gap-2"
+                 >
+                   <X className="w-4 h-4" />
+                   Clear Filter ({activeCohort})
+                 </button>
+               )}
+            </div>
+
+            {/* Dynamic KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-center">
+                 <span className="text-slate-500 font-bold text-xs tracking-wider uppercase mb-2">Total Enrolled</span>
+                 <span className="text-4xl font-extrabold text-blue-900">{filteredStats.totalEnrolled}</span>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-center">
+                 <span className="text-slate-500 font-bold text-xs tracking-wider uppercase mb-2">Avg Attendance</span>
+                 <span className="text-4xl font-extrabold text-indigo-600">{filteredStats.avgAttendance}%</span>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-center">
+                 <span className="text-slate-500 font-bold text-xs tracking-wider uppercase mb-2">Overall Performance</span>
+                 <span className="text-4xl font-extrabold text-emerald-600">{filteredStats.overallPerformance}%</span>
+              </div>
+            </div>
+
+            {/* CSS Grid for Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              
+              {/* Controller: Pie Chart */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col col-span-1 min-h-[350px]">
+                <h3 className="font-bold text-slate-700 mb-4 text-center">Total Students by Class</h3>
+                <div className="flex-1 w-full min-h-[250px]">
+                   <ResponsiveContainer width="100%" height="100%">
+                     <PieChart>
+                       <Pie
+                         data={cohortData}
+                         cx="50%"
+                         cy="50%"
+                         innerRadius={60}
+                         outerRadius={100}
+                         paddingAngle={5}
+                         dataKey="value"
+                         onClick={(data) => { if (data && data.name) setActiveCohort(data.name); }}
+                         className="cursor-pointer outline-none hover:opacity-80 transition-opacity"
+                       >
+                         {cohortData.map((entry, index) => (
+                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                         ))}
+                       </Pie>
+                       <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                     </PieChart>
+                   </ResponsiveContainer>
+                </div>
+                <p className="text-center text-xs text-slate-400 font-medium">Click a slice to filter dashboard</p>
+              </div>
+
+              {/* Responder: Bar Chart */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col col-span-1 lg:col-span-2 min-h-[350px]">
+                <h3 className="font-bold text-slate-700 mb-4">Average Scores by Subject {activeCohort !== "All" && `(${activeCohort})`}</h3>
+                <div className="flex-1 w-full min-h-[250px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={filteredGrades} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} domain={[0, 100]} />
+                      <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }} cursor={{fill: '#f8fafc'}} />
+                      <Bar dataKey="average" fill="#4F46E5" radius={[4, 4, 0, 0]} animationDuration={800} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Responder: Line Chart */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col col-span-1 lg:col-span-3 min-h-[350px]">
+                <h3 className="font-bold text-slate-700 mb-4">Monthly Attendance Trends {activeCohort !== "All" && `(${activeCohort})`}</h3>
+                <div className="flex-1 w-full min-h-[250px] -ml-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={filteredAttendance} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }} domain={[80, 100]} />
+                      <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }} />
+                      <Line type="monotone" dataKey="attendance" stroke="#2563EB" strokeWidth={4} activeDot={{ r: 8, strokeWidth: 0, fill: '#1d4ed8' }} animationDuration={800} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
 
         {/* Staff Add User Form */}
         {activeTab === "staff" && showAddUser && (
@@ -785,6 +974,15 @@ export default function AdminDashboard() {
 
             {/* Fees Table */}
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+              <div className="p-4 md:p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 className="font-bold text-lg text-slate-800 font-serif">Fee Records</h3>
+                <button 
+                  onClick={() => setIsAddInvoiceModalOpen(true)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md hover:-translate-y-0.5"
+                >
+                  + Generate New Invoice
+                </button>
+              </div>
               <div className="overflow-x-auto min-h-[300px]">
                 {isLoadingData ? (
                   <div className="flex flex-col items-center justify-center h-64 text-slate-500 gap-3">
@@ -1135,6 +1333,19 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Add Invoice Blank Modal */}
+      {isAddInvoiceModalOpen && (
+        <InvoiceModal 
+          onClose={() => setIsAddInvoiceModalOpen(false)}
+          onSuccess={(msg) => {
+            setToastMessage(msg);
+            setTimeout(() => setToastMessage(null), 3000);
+            fetchDirectoryData();
+          }}
+          studentList={studentList}
+        />
       )}
     </div>
   );
