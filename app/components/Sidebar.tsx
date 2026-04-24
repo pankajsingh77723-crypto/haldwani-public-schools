@@ -4,26 +4,38 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, BookOpen, MessageSquare, UserCircle, AlertCircle, ChevronRight, LogOut, Shield } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
 export function Sidebar() {
   const pathname = usePathname();
-  const isAdmin = pathname.includes("admin");
-  const isTeacher = pathname.includes("teacher");
+  const [role, setRole] = useState<string | null>(null);
 
-  const isParent = !isAdmin && !isTeacher;
+  useEffect(() => {
+    const fetchRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        const { data } = await supabase.from('users').select('role').eq('email', user.email).single();
+        if (data && data.role) {
+          setRole(data.role.toUpperCase());
+        }
+      }
+    };
+    fetchRole();
+  }, []);
 
-  let navLinks;
-  if (isAdmin) {
+  let navLinks: any[] = [];
+  if (role === 'ADMIN' || role === 'ADMINISTRATOR') {
     navLinks = [
       { name: "Dashboard", href: "/admin-dashboard", icon: LayoutDashboard },
       { name: "Global Settings", href: "/profile", icon: AlertCircle },
     ];
-  } else if (isTeacher) {
+  } else if (role === 'TEACHER') {
     navLinks = [
       { name: "Dashboard", href: "/teacher-dashboard", icon: LayoutDashboard },
+      { name: "Communications", href: "/communications", icon: MessageSquare },
       { name: "Profile", href: "/profile", icon: UserCircle },
     ];
-  } else {
+  } else if (role === 'PARENT') {
     navLinks = [
       { name: "Dashboard", href: "/", icon: LayoutDashboard },
       { name: "Academic Record", href: "/academic-record", icon: BookOpen },

@@ -1,8 +1,106 @@
-import { User, Phone, CheckCircle2, Download, AlertCircle, FileText } from "lucide-react";
+"use client";
+
+import { useState, useEffect } from "react";
+import { User, Phone, CheckCircle2, Download, AlertCircle, FileText, Mail, Shield, Briefcase, Building } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function Profile() {
+  const [role, setRole] = useState<string | null>(null);
+  const [email, setEmail] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        setEmail(user.email);
+        const { data } = await supabase.from('users').select('role').eq('email', user.email).single();
+        if (data && data.role) {
+          setRole(data.role.toUpperCase());
+        }
+      }
+      setLoading(false);
+    };
+    fetchRole();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center flex-1 h-full min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (role === 'ADMIN' || role === 'ADMINISTRATOR') {
+    return (
+      <section className="flex-1 min-w-0 flex flex-col gap-6 md:gap-8 h-full min-h-max animate-in fade-in duration-300">
+        <div className="flex items-center justify-between bg-surface border border-slate-100 rounded-2xl p-6 md:p-8 shadow-md shrink-0">
+          <div>
+            <h1 className="font-serif font-bold text-3xl text-primary drop-shadow-sm">Admin Settings</h1>
+            <p className="text-slate-500 mt-2 font-medium">Manage global preferences and your administrator account.</p>
+          </div>
+          <div className="hidden md:flex items-center justify-center p-4 bg-indigo-50 rounded-full text-indigo-600 shadow-inner ring-4 ring-slate-50">
+            <Shield className="w-8 h-8" strokeWidth={2.5} />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-6 w-full lg:w-[60%]">
+          <div className="bg-surface border border-slate-100 rounded-2xl shadow-md p-6 md:p-8 hover:shadow-lg transition-all duration-300">
+            <div className="flex items-center gap-3 mb-6 border-b-2 border-slate-100 pb-4">
+               <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Administrator</span>
+            </div>
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2"><Mail className="w-4 h-4"/> Admin Email</label>
+                <input type="text" readOnly value={email} className="h-12 w-full bg-slate-50 border border-slate-200 text-slate-500 px-4 rounded-xl font-medium focus:outline-none cursor-not-allowed shadow-inner" />
+              </div>
+            </div>
+            <button className="mt-8 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white w-full md:w-auto px-8 py-4 rounded-xl font-bold transition-all duration-300 shadow-md">
+              Update Administrator Preferences
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (role === 'TEACHER') {
+    return (
+      <section className="flex-1 min-w-0 flex flex-col gap-6 md:gap-8 h-full min-h-max animate-in fade-in duration-300">
+        <div className="flex items-center justify-between bg-surface border border-slate-100 rounded-2xl p-6 md:p-8 shadow-md shrink-0">
+          <div>
+            <h1 className="font-serif font-bold text-3xl text-primary drop-shadow-sm">Teacher Profile</h1>
+            <p className="text-slate-500 mt-2 font-medium">Manage your staff details and communication preferences.</p>
+          </div>
+          <div className="hidden md:flex items-center justify-center p-4 bg-blue-50 rounded-full text-blue-600 shadow-inner ring-4 ring-slate-50">
+            <Briefcase className="w-8 h-8" strokeWidth={2.5} />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-6 w-full lg:w-[60%]">
+          <div className="bg-surface border border-slate-100 rounded-2xl shadow-md p-6 md:p-8 hover:shadow-lg transition-all duration-300">
+            <div className="flex items-center gap-3 mb-6 border-b-2 border-slate-100 pb-4">
+               <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Staff / Educator</span>
+            </div>
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2"><Mail className="w-4 h-4"/> Work Email</label>
+                <input type="text" readOnly value={email} className="h-12 w-full bg-slate-50 border border-slate-200 text-slate-500 px-4 rounded-xl font-medium focus:outline-none cursor-not-allowed shadow-inner" />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2"><Building className="w-4 h-4"/> Department</label>
+                <input type="text" readOnly value="General Academics" className="h-12 w-full bg-slate-50 border border-slate-200 text-slate-500 px-4 rounded-xl font-medium focus:outline-none cursor-not-allowed shadow-inner" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="flex-1 min-w-0 flex flex-col gap-6 md:gap-8 h-full min-h-max">
+    <section className="flex-1 min-w-0 flex flex-col gap-6 md:gap-8 h-full min-h-max animate-in fade-in duration-300">
       {/* Page Header */}
       <div className="flex items-center justify-between bg-surface border border-slate-100 rounded-2xl p-6 md:p-8 shadow-md shrink-0">
         <div>
