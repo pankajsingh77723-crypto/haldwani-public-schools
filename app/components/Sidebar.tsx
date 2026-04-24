@@ -15,15 +15,13 @@ export function Sidebar() {
   let navLinks;
   if (isAdmin) {
     navLinks = [
-      { name: "Overview", href: "/admin-dashboard", icon: LayoutDashboard },
-      { name: "Directory", href: "/admin-dashboard?tab=staff", icon: Shield },
-      { name: "Classes", href: "/admin-dashboard?tab=students", icon: BookOpen },
-      { name: "Notice Board", href: "/admin-dashboard?tab=noticeboard", icon: MessageSquare },
-      { name: "Global Settings", href: "/settings", icon: AlertCircle },
+      { name: "Dashboard", href: "/admin-dashboard", icon: LayoutDashboard },
+      { name: "Global Settings", href: "/profile", icon: AlertCircle },
     ];
   } else if (isTeacher) {
     navLinks = [
       { name: "Dashboard", href: "/teacher-dashboard", icon: LayoutDashboard },
+      { name: "Profile", href: "/profile", icon: UserCircle },
     ];
   } else {
     navLinks = [

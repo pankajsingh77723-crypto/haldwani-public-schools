@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { Users, UserPlus, Shield, CheckCircle, GraduationCap, Loader2, Pencil, Trash2, X, Megaphone, Send, Wallet, IndianRupee, FileText, Star, Briefcase, MessageCircle, Activity } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Users, UserPlus, Shield, CheckCircle, GraduationCap, Loader2, Pencil, Trash2, X, Megaphone, Send, Wallet, IndianRupee, FileText, Star, Briefcase, MessageCircle, Activity, CloudUpload } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import Papa from 'papaparse';
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
 import InvoiceModal from "./InvoiceModal";
 
@@ -95,6 +96,10 @@ export default function AdminDashboard() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Bulk Upload State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -189,6 +194,60 @@ export default function AdminDashboard() {
     }
     
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setToastMessage("Parsing CSV and uploading records...");
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        try {
+          const mappedData = results.data.map((row: any) => ({
+            first_name: row.first_name || row.FirstName || row['First Name'] || '',
+            last_name: row.last_name || row.LastName || row['Last Name'] || '',
+            roll_no: row.roll_no || row.RollNumber || row['Roll Number'] || '',
+            class_name: row.class_name || row.Class || row.ClassName || ''
+          })).filter((r: any) => r.first_name && r.class_name);
+          
+          if (mappedData.length === 0) {
+            setToastMessage("Wait! CSV was empty or headers didn't match.");
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            setTimeout(() => setToastMessage(null), 3000);
+            return;
+          }
+
+          const { error } = await supabase.from('students').insert(mappedData);
+          
+          if (error) {
+            console.error(error);
+            setToastMessage("Wait! Failed to import students from CSV.");
+          } else {
+            setToastMessage(`Successfully imported ${mappedData.length} students!`);
+            fetchDirectoryData();
+          }
+        } catch (err) {
+          console.error(err);
+          setToastMessage("Wait! Error during CSV processing.");
+        }
+        setIsUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        setTimeout(() => setToastMessage(null), 3000);
+      },
+      error: (error) => {
+        console.error(error);
+        setToastMessage("Wait! Failed to read CSV file.");
+        setIsUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        setTimeout(() => setToastMessage(null), 3000);
+      }
+    });
   };
 
   const handleEnrollStudent = async (e: React.FormEvent) => {
@@ -457,13 +516,32 @@ export default function AdminDashboard() {
               </button>
             )}
             {activeTab === "students" && (
-              <button 
-                onClick={() => setShowEnrollStudent(!showEnrollStudent)}
-                className="flex items-center gap-2 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 px-5 py-2.5 rounded-xl font-bold transition-all hover:shadow-sm w-full md:w-auto justify-center"
-              >
-                <GraduationCap className="w-5 h-5" strokeWidth={2.5} />
-                Enroll New Student
-              </button>
+              <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+                <input
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  disabled={isUploading}
+                />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="flex items-center gap-2 bg-white text-blue-600 border-2 border-blue-600 hover:bg-blue-50 px-5 py-2.5 rounded-xl font-bold transition-all w-full md:w-auto justify-center disabled:opacity-50 shadow-sm hover:shadow-md"
+                  title="Upload CSV"
+                >
+                  {isUploading ? <Loader2 className="w-5 h-5 animate-spin text-blue-600" /> : <CloudUpload className="w-5 h-5" strokeWidth={2.5} />}
+                  Upload CSV
+                </button>
+                <button 
+                  onClick={() => setShowEnrollStudent(!showEnrollStudent)}
+                  className="flex items-center gap-2 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 px-5 py-2.5 rounded-xl font-bold transition-all hover:shadow-sm w-full md:w-auto justify-center"
+                >
+                  <GraduationCap className="w-5 h-5" strokeWidth={2.5} />
+                  Enroll New Student
+                </button>
+              </div>
             )}
           </div>
         </div>
